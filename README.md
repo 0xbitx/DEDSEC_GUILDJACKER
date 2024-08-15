@@ -40,7 +40,7 @@ GUILD-JACKER is an advanced Discord bot toolkit designed to provide extensive fu
 
 GUILD-JACKER is a versatile tool for developers, system administrators, and server managers who need precise control and extensive functionality for managing their servers and channels.
 
-How to Create a Bot Account:
+### How to Create a Bot Account and Get Bot Token:
 
   * Log in to the [Discord website](https://discord.com).
   * Go to the [application page](https://discord.com/developers/applications).
@@ -49,14 +49,26 @@ How to Create a Bot Account:
   * Add a Bot User by navigating to the "Bot" tab and clicking "Add Bot". Confirm by clicking "Yes, do it!".
   * Check the (PUBLIC BOT).
   * Ensure "Require OAuth2 Code Grant" is unchecked.
+  * click (Reset Token) then click "Yes, do it!".
   * Copy your bot’s token by clicking the "Copy" button.
 
-How to Enable Intents:
+### How to Enable Intents:
 
   *   Go to the Application Page at Discord Developer Portal.
   *   Select the bot application you want to configure.
   *   Navigate to the "Bot" tab on the left.
   *   In the "Privileged Gateway Intents" section, enable all the intents and save your changes.
+
+### How to get bot invite link
+
+    Go to the OAuth2 tab in the Discord Developer Portal.
+    Under OAuth2 URL Generator:
+        Check the box for bot under SCOPES.
+    Under BOT PERMISSIONS:
+        Check the box for Administrator.
+    Copy the link generated under GENERATED URL.
+
+This link will allow you to invite your bot to any server.
     
 ## INSTALLATION 
     * git clone https://github.com/0xbitx/DEDSEC_GUILDJACKER.git
