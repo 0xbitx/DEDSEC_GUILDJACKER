@@ -61,12 +61,10 @@ GUILD-JACKER is a versatile tool for developers, system administrators, and serv
 
 ### How to get bot invite link
 
-    Go to the OAuth2 tab in the Discord Developer Portal.
-    Under OAuth2 URL Generator:
-        Check the box for bot under SCOPES.
-    Under BOT PERMISSIONS:
-        Check the box for Administrator.
-    Copy the link generated under GENERATED URL.
+  * Go to the OAuth2 tab in the Discord Developer Portal.
+  * Under OAuth2 URL Generator: Check the box for bot under SCOPES.
+  * Under BOT PERMISSIONS: Check the box for Administrator.
+  * Copy the link generated under GENERATED URL.
 
 This link will allow you to invite your bot to any server.
     
