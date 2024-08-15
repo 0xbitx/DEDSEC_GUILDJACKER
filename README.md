@@ -30,7 +30,6 @@ GUILD-JACKER is an advanced Discord bot toolkit designed to provide extensive fu
   * Delete all emojis: Remove all custom emojis from the server.
   * Delete all stickers: Clear all stickers from the server.
   * NUKE: Execute a complete server reset, including deletion of categories, channels, roles, emojis, and stickers.
-  * RAID (soon): A future feature for mass server modifications.
   * PING: Notify everyone in the server with a ping message.
   * Spam Typing: Simulate continuous typing activity in all channels.
   * Create category: Add a new category with specified parameters.
