@@ -63,6 +63,7 @@ How to Enable Intents:
     * git clone https://github.com/0xbitx/DEDSEC_GUILDJACKER.git
     * cd DEDSEC_GUILDJACKER
     * chmod +x dedsec_guild-jacker
+    * sudo pip3 install discord.py
     * sudo ./ dedsec_guild-jacker
 
 ### TESTED ON FOLLOWING
