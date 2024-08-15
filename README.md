@@ -11,7 +11,7 @@
 
 ### DESCRIPTION
 
-GUILD-JACKER is an advanced Discord bot toolkit designed to provide extensive functionality for managing and interacting with Discord servers. It includes capabilities for creating and deleting channels, managing roles and emojis, sending messages, and more. GUILD-JACKER is perfect for server administrators, developers, and enthusiasts who need powerful tools for server management and automation. With features like server flooding, role management, and category creation, DISNUKER offers a comprehensive suite for controlling and customizing Discord servers.
+GUILD-JACKER is an advanced Discord bot toolkit designed to provide extensive functionality for managing and interacting with Discord servers. It includes capabilities for creating and deleting channels, managing roles and emojis, sending messages, and more. GUILD-JACKER is perfect for server administrators, developers, and enthusiasts who need powerful tools for server management and automation. With features like server flooding, role management, and category creation, GUILD-JACKER offers a comprehensive suite for controlling and customizing Discord servers.
 
   * Show all channels: View all existing channels within the selected server.
   * Send a message: Dispatch a message to a specified channel.
@@ -39,7 +39,7 @@ GUILD-JACKER is an advanced Discord bot toolkit designed to provide extensive fu
   * Change Server Icon: Modify the server's icon.
   * Change Server: Switch between different servers for interaction.
 
-DISNUKER is a versatile tool for developers, system administrators, and server managers who need precise control and extensive functionality for managing their servers and channels.
+GUILD-JACKER is a versatile tool for developers, system administrators, and server managers who need precise control and extensive functionality for managing their servers and channels.
 
 How to Create a Bot Account:
 
