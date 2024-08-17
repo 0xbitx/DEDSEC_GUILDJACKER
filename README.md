@@ -37,6 +37,8 @@ GUILD-JACKER is an advanced Discord bot toolkit designed to provide extensive fu
   * Change Server Name: Update the server's name.
   * Change Server Icon: Modify the server's icon.
   * Change Server: Switch between different servers for interaction.
+  * Change bot: Switch between multiple bots
+  * delete bot: Delete bot already added to the tool
 
 GUILD-JACKER is a versatile tool for developers, system administrators, and server managers who need precise control and extensive functionality for managing their servers and channels.
 
