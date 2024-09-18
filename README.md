@@ -74,7 +74,6 @@ This link will allow you to invite your bot to any server.
     * git clone https://github.com/0xbitx/DEDSEC_GUILDJACKER.git
     * cd DEDSEC_GUILDJACKER
     * chmod +x dedsec_guild-jacker
-    * sudo pip3 install discord.py aiohttp tabulate
     * sudo ./dedsec_guild-jacker
 
 ### TESTED ON FOLLOWING
