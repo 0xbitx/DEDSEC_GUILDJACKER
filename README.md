@@ -73,7 +73,7 @@ This link will allow you to invite your bot to any server.
 ## INSTALLATION 
     * git clone https://github.com/0xbitx/DEDSEC_GUILDJACKER.git
     * cd DEDSEC_GUILDJACKER
-    * pip3 install discord.py tabulate requests
+    * pip3 install discord.py requests aiohttp tabulate
     * sudo apt install chafa 
     * chmod +x dedsec_guild-jacker
     * sudo ./dedsec_guild-jacker
