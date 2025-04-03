@@ -76,7 +76,7 @@ This link will allow you to invite your bot to any server.
     * pip3 install discord.py requests aiohttp tabulate
     * sudo apt install chafa 
     * chmod +x dedsec_guild-jacker
-    * sudo ./dedsec_guild-jacker
+    * ./dedsec_guild-jacker
 
 ### TESTED ON FOLLOWING
 * Kali Linux 
